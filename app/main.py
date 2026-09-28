@@ -8,6 +8,10 @@ from fastapi import (
     File
 )
 
+from pathlib import Path
+from fastapi.responses import FileResponse
+
+
 from pydantic import BaseModel
 
 from app.agent.graph import build_graph
@@ -61,6 +65,22 @@ def health():
     return {
         "status": "healthy"
     }
+
+
+@app.get("/chart")
+def get_chart():
+    chart_path = Path("data/charts/analysis_chart.html")
+
+    if not chart_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Chart file not found."
+        )
+
+    return FileResponse(
+        path=chart_path,
+        media_type="text/html"
+    )
 
 
 @app.post("/upload-sql")

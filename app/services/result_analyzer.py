@@ -16,6 +16,8 @@ def analyze_results(
     - Database results
     - Statistical analysis
     - Anomaly detection
+
+    Visualization is handled separately by the chart node.
     """
 
     # -----------------------------------------
@@ -23,10 +25,7 @@ def analyze_results(
     # -----------------------------------------
 
     if not results:
-
-        return (
-            "No data was found for this question."
-        )
+        return "No data was found for this question."
 
     # -----------------------------------------
     # Convert database results to text
@@ -35,23 +34,15 @@ def analyze_results(
     result_text = ""
 
     for row in results:
-
-        result_text += (
-            str(row) + "\n"
-        )
+        result_text += str(row) + "\n"
 
     # -----------------------------------------
     # Statistical information
     # -----------------------------------------
 
     if data_analysis:
-
-        statistics_text = str(
-            data_analysis
-        )
-
+        statistics_text = str(data_analysis)
     else:
-
         statistics_text = (
             "Statistical analysis was not requested."
         )
@@ -61,13 +52,8 @@ def analyze_results(
     # -----------------------------------------
 
     if anomalies:
-
-        anomaly_text = str(
-            anomalies
-        )
-
+        anomaly_text = str(anomalies)
     else:
-
         anomaly_text = (
             "Anomaly detection was not requested."
         )
@@ -79,7 +65,7 @@ def analyze_results(
     prompt = f"""
 You are an expert Data Analyst.
 
-Answer the user's question using the
+Answer the user's question using only the
 database information provided below.
 
 USER QUESTION:
@@ -129,6 +115,26 @@ INSTRUCTIONS:
 
 12. Do not provide SQL in the final answer.
 
+13. Return plain analytical text only.
+
+14. Do NOT generate charts.
+
+15. Do NOT generate images.
+
+16. Do NOT use Markdown image syntax such as:
+    ![title](...)
+
+17. Do NOT generate Base64 image data.
+
+18. Do NOT generate data:image URLs.
+
+19. Do NOT generate HTML image tags.
+
+20. Do NOT embed visualization data in the answer.
+
+21. Visualization is handled separately by
+    the application.
+
 FINAL ANSWER:
 """
 
@@ -136,4 +142,9 @@ FINAL ANSWER:
     # Get final answer from Groq
     # -----------------------------------------
 
-    return ask_groq(prompt).strip()
+    answer = ask_groq(prompt)
+
+    if not answer:
+        return "Unable to generate an analysis."
+
+    return answer.strip()

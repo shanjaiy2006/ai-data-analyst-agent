@@ -98,6 +98,7 @@ def sql_generator_node(state):
     )
 
     print("\n[SQL Generator Node]")
+
     print("Generated SQL:")
     print(sql)
 
@@ -105,6 +106,7 @@ def sql_generator_node(state):
         "sql": sql,
         "sql_attempts": 0
     }
+
 
 def sql_validator_node(state):
 
@@ -129,6 +131,7 @@ def sql_validator_node(state):
             else message
         )
     }
+
 
 def sql_execution_node(state):
 
@@ -236,6 +239,7 @@ def sql_correction_node(state):
         "sql_attempts": attempts + 1
     }
 
+
 def data_analysis_node(state):
 
     results = state.get(
@@ -320,84 +324,127 @@ def anomaly_detection_node(state):
 
 
 def chart_node(state):
-
-    results = state.get(
-        "results",
-        []
-    )
-
-    plan = state.get(
-        "plan",
-        {}
-    )
+    results = state.get("results", [])
+    plan = state.get("plan", {})
 
     print("\n[Chart Node]")
 
-    if not plan.get(
-        "chart",
-        False
-    ):
-
-        print(
-            "Chart generation not required."
-        )
-
-        return {
-            "chart": None
-        }
+    if not plan.get("chart", False):
+        print("Chart generation not required.")
+        return {"chart": None}
 
     if not results:
+        print("No results available for chart.")
+        return {"chart": None}
 
-        print(
-            "No results available for chart."
-        )
+    result_columns = list(results[0].keys())
 
-        return {
-            "chart": None
-        }
+    if len(result_columns) < 2:
+        print("Not enough columns available for chart generation.")
+        return {"chart": None}
 
-    result_columns = set(
-        results[0].keys()
+    print("Actual SQL result columns:", result_columns)
+
+    # Planner-selected columns
+    x_column = plan.get("chart_x_column")
+    y_column = plan.get("chart_y_column")
+    chart_type = plan.get("chart_type")
+
+    # Check whether planner-selected columns actually exist
+    planner_columns_valid = (
+        x_column in result_columns
+        and y_column in result_columns
     )
 
-    x_column = plan.get(
-        "chart_x_column"
+    if planner_columns_valid:
+        print("Using planner-selected chart columns.")
+    else:
+        print("Planner-selected columns do not match SQL result.")
+        print("Using automatic chart column detection.")
+
+        # Automatically detect suitable columns
+        x_column = None
+        y_column = None
+
+        # Find a categorical/string column
+        for column in result_columns:
+            values = [row.get(column) for row in results]
+
+            if any(isinstance(value, str) for value in values):
+                x_column = column
+                break
+
+        # Find a numeric column
+        for column in result_columns:
+            values = [row.get(column) for row in results]
+
+            numeric_values = [
+                value
+                for value in values
+                if isinstance(value, (int, float))
+            ]
+
+            if numeric_values:
+                y_column = column
+                break
+
+        # If no categorical column exists, use first column
+        if x_column is None:
+            x_column = result_columns[0]
+
+        # If no numeric column exists, use second column
+        if y_column is None and len(result_columns) >= 2:
+            y_column = result_columns[1]
+
+        print("Automatically selected X column:", x_column)
+        print("Automatically selected Y column:", y_column)
+
+    if x_column is None or y_column is None:
+        print("Could not determine chart columns.")
+        return {"chart": None}
+
+    # Validate data types for chart type
+    x_values = [row.get(x_column) for row in results]
+    y_values = [row.get(y_column) for row in results]
+
+    x_is_numeric = all(
+        isinstance(value, (int, float))
+        for value in x_values
+        if value is not None
     )
 
-    y_column = plan.get(
-        "chart_y_column"
+    y_is_numeric = all(
+        isinstance(value, (int, float))
+        for value in y_values
+        if value is not None
     )
 
-    if (
-        x_column not in result_columns
-        or y_column not in result_columns
-    ):
+    # Scatter charts require numeric X and Y values.
+    if chart_type == "scatter":
+        if not (x_is_numeric and y_is_numeric):
+            print("Scatter chart requires numeric X and Y values.")
+            print("Switching to bar chart.")
+            chart_type = "bar"
 
-        print(
-            "Planner-selected chart columns "
-            "are not present in the SQL result."
-        )
+    # If X is categorical and chart type is line,
+    # bar chart is safer for arbitrary categorical data.
+    if chart_type == "line" and not x_is_numeric:
+        print("Line chart selected for categorical X column.")
+        print("Switching to bar chart.")
+        chart_type = "bar"
 
-        print(
-            "Available columns:",
-            list(result_columns)
-        )
-
-        return {
-            "chart": None
-        }
+    print("Final chart type:", chart_type)
+    print("Final X column:", x_column)
+    print("Final Y column:", y_column)
 
     chart = generate_chart(
         results,
-        plan.get("chart_type"),
+        chart_type,
         x_column,
         y_column
     )
 
-    print(
-        "Chart:",
-        chart
-    )
+    print("Chart:", chart)
 
     return {
         "chart": chart

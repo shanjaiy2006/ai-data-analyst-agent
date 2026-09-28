@@ -2,6 +2,7 @@ import os
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 API_BASE_URL = os.getenv(
@@ -43,7 +44,6 @@ def upload_sql_file(uploaded_file):
     """
 
     try:
-
         response = requests.post(
             f"{API_BASE_URL}/upload-sql",
             files={
@@ -57,7 +57,6 @@ def upload_sql_file(uploaded_file):
         )
 
         if response.status_code != 200:
-
             try:
                 error_data = response.json()
                 error_message = error_data.get(
@@ -72,21 +71,18 @@ def upload_sql_file(uploaded_file):
         return response.json(), None
 
     except requests.exceptions.ConnectionError:
-
         return (
             None,
             "Unable to connect to the FastAPI server."
         )
 
     except requests.exceptions.Timeout:
-
         return (
             None,
             "The SQL upload request timed out."
         )
 
     except Exception as e:
-
         return (
             None,
             f"Unexpected error: {str(e)}"
@@ -106,7 +102,6 @@ def analyze_question(question):
     }
 
     try:
-
         response = requests.post(
             f"{API_BASE_URL}/analyze",
             json=payload,
@@ -114,7 +109,6 @@ def analyze_question(question):
         )
 
         if response.status_code != 200:
-
             try:
                 error_data = response.json()
                 error_message = error_data.get(
@@ -129,21 +123,18 @@ def analyze_question(question):
         return response.json(), None
 
     except requests.exceptions.ConnectionError:
-
         return (
             None,
             "Unable to connect to the FastAPI server."
         )
 
     except requests.exceptions.Timeout:
-
         return (
             None,
             "The analysis request timed out."
         )
 
     except Exception as e:
-
         return (
             None,
             f"Unexpected error: {str(e)}"
@@ -160,7 +151,6 @@ def close_current_session():
         return
 
     try:
-
         requests.delete(
             f"{API_BASE_URL}/session/"
             f"{st.session_state.session_id}",
@@ -406,44 +396,36 @@ else:
 
                 if chart_path:
 
-                    st.subheader(
-                        "Visualization"
+                    chart_url = (
+                        f"{API_BASE_URL}/chart"
                     )
 
-                    if os.path.exists(
-                        chart_path
-                    ):
+                    try:
 
-                        try:
+                        chart_response = requests.get(
+                            chart_url,
+                            timeout=30
+                        )
 
-                            with open(
-                                chart_path,
-                                "r",
-                                encoding="utf-8"
-                            ) as chart_file:
+                        if chart_response.status_code == 200:
 
-                                chart_html = (
-                                    chart_file.read()
-                                )
-
-                            st.components.v1.html(
-                                chart_html,
-                                height=600,
+                            components.html(
+                                chart_response.text,
+                                height=650,
                                 scrolling=True
                             )
 
-                        except Exception as e:
+                        else:
 
                             st.warning(
-                                "The chart was generated "
-                                "but could not be displayed."
+                                "The chart could not be loaded."
                             )
 
-                    else:
+                    except requests.RequestException:
 
                         st.warning(
-                            "The chart file could not "
-                            "be found."
+                            "Unable to connect to the "
+                            "chart service."
                         )
 
                 # --------------------------------------
